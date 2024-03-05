@@ -16,3 +16,5 @@ Make sure you have installed the game and at least started the game once before 
 
 After this the installation directory of the game should contain a new folder called `Mods`.
 Then Move the downloaded `.dll` into this folder and start the game.
+
+Connect your devices and off you go.
