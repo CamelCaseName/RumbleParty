@@ -1,6 +1,8 @@
 # RumbleParty
 Mod using intiface to enable love toy control in House Party.
 
+# ALT + X to STOP
+
 ## QuickStart MelonLoader (with custom patch)
 
 Make sure you have installed the game and at least started the game once before you continue.
