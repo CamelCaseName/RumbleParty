@@ -105,7 +105,7 @@ public class RumbleParty : MelonMod
     private Character? partner1;
     private const int QSamples = 1024;
     private const int rumbleUpdatems = 100;
-    private GameObject CanvasGO = new();
+    private GameObject CanvasGO;
     private int _baseRumble = 0;
     private int _currentMaxRumble = 50;
     private int _oldbaseRumble = 0;
@@ -224,9 +224,9 @@ public class RumbleParty : MelonMod
         wallSexValue = preferences.CreateEntry("wallSexValue", 15000.0f, "Multiplier for wallsex 1 intensity", "the larger the more intense. default 18000");
         wallSex2Value = preferences.CreateEntry("wallSex2Value", 20000.0f, "Multiplier for wallsex 2 intensity", "the larger the more intense. default 18000");
         wallSex3Value = preferences.CreateEntry("wallSex3Value", 12000.0f, "Multiplier for wallsex 3 intensity", "the larger the more intense. default 18000");
-        MelonLogger.Msg($"Initializing RumbleParty with {intifacePath.Value} {intifaceArguments.Value}");
+        MelonLogger.Msg($"[RumbleParty] Initializing RumbleParty with {intifacePath.Value} {intifaceArguments.Value}");
         buttConnection = Task.Run(InitializeButtConnections).ContinueWith((Task t) => { if (t.Exception != null) MelonLogger.Error(t.Exception.Message); });
-        MelonLogger.Msg("Connection completed");
+        MelonLogger.Msg("[RumbleParty] Connection completed");
     }
 
     public override void OnSceneWasInitialized(int buildIndex, string sceneName)
@@ -234,20 +234,21 @@ public class RumbleParty : MelonMod
         if (sceneName == "MainMenu")
         {
             // Canvas
-            CanvasGO = new()
-            {
-                name = "Rumbler UI"
-            };
-            canvas = CanvasGO.AddComponent<Canvas>();
-            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            var scaler = CanvasGO.AddComponent<CanvasScaler>();
-            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            CanvasGO.AddComponent<GraphicRaycaster>();
+            //CanvasGO = new()
+            //{
+            //    name = "Rumbler UI",
+            //    active = true,
+            //};
+            //canvas = CanvasGO.AddComponent<Canvas>();
+            //canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            //var scaler = CanvasGO.AddComponent<CanvasScaler>();
+            //scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            //CanvasGO.AddComponent<GraphicRaycaster>();
 
-            _ = UIBuilder.CreatePanel("Rumbler UI Container", CanvasGO, new(0.2f, 0.3f), new(0, Screen.height * 0.7f), out var contentHolder);
-            text = UIBuilder.CreateLabel(contentHolder, "Rumbler warning text", "", TextAnchor.MiddleCenter, Color.red);
-            text.fontSize = 40;
-            text.text = "TO STOP THE RUMBLE AT ANY TIME HIT ALT + X\n(also hides this text)";
+            //_ = UIBuilder.CreatePanel("Rumbler UI Container", CanvasGO, new(0.2f, 0.3f), new(0, Screen.height * 0.7f), out var contentHolder);
+            //text = UIBuilder.CreateLabel(contentHolder, "Rumbler warning text", "", TextAnchor.MiddleCenter, Color.red);
+            //text.fontSize = 40;
+            //text.text = "TO STOP THE RUMBLE AT ANY TIME HIT ALT + X\n(also hides this text)";
         }
         else
         {
@@ -340,7 +341,7 @@ public class RumbleParty : MelonMod
             if (currentAct != player.Intimacy.CurrentSexualActivity)
             {
                 currentAct = player.Intimacy.CurrentSexualActivity;
-                MelonLogger.Msg(player.Intimacy.CurrentSexualRole);
+                //MelonLogger.Msg(player.Intimacy.CurrentSexualRole);
             }
 
             if (useDynamicSexBoost.Value)
@@ -375,7 +376,7 @@ public class RumbleParty : MelonMod
                     }
                 }
 
-                MelonLogger.Msg(CutsceneSource?.time.ToString() ?? "no cutscene music audiosource found");
+                //MelonLogger.Msg(CutsceneSource?.time.ToString() ?? "no cutscene music audiosource found");
                 //CutsceneMusic_AudioSource
             }
 
@@ -490,8 +491,8 @@ public class RumbleParty : MelonMod
 
         try
         {
-            MelonLogger.Msg("Connected to the intiface");
-            MelonLogger.Msg("Started scanning");
+            MelonLogger.Msg("[RumbleParty] Connected to the intiface");
+            MelonLogger.Msg("[RumbleParty] Started scanning");
             _ = client.StartScanningAsync();
         }
         catch (ButtplugException ex)
@@ -802,8 +803,8 @@ public class RumbleParty : MelonMod
     {
         if (!messageAcknowledged)
         {
-            CanvasGO.active = false;
-            text.text = "";
+            //CanvasGO.active = false;
+            //text.text = "";
             messageAcknowledged = true;
         }
         else if (!rumbleStopped)
