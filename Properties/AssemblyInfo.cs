@@ -33,5 +33,5 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyVersion("1.0.0.0")]
 [assembly: AssemblyFileVersion("1.0.0.0")]
 [assembly: MelonColor(255, 255, 80, 180)]
-[assembly: MelonInfo(typeof(RumbleParty.RumbleParty), "RumbleParty", 1, 0, 0, "Lenny")]
+[assembly: MelonInfo(typeof(RumbleParty.RumbleParty), "RumbleParty", 1, 1, 0, "Lenny")]
 [assembly: MelonGame("Eek.House Party")]
