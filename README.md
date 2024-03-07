@@ -1,5 +1,6 @@
 # RumbleParty
 Mod using intiface to enable love toy control in House Party.
+Rumbles on inventory changes, dialogues, "action" scenes and cutscenes.
 
 # ALT + X to STOP
 

@@ -5,19 +5,15 @@ using HPUI;
 using Il2Cpp;
 using Il2CppCrazyMinnow.SALSA;
 using Il2CppEekCharacterEngine;
-using Il2CppEekCharacterEngine.Interaction;
 using Il2CppEekEvents;
-using Il2CppEekEvents.Content;
-using Il2CppEekEvents.Dialogues;
 using Il2CppEekUI;
 using MelonLoader;
-using Newtonsoft.Json.Linq;
 using System.Diagnostics;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Runtime.Loader;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using UnityEngine.Profiling;
 using UnityEngine.UI;
 
 namespace RumbleParty;
@@ -103,7 +99,7 @@ public class RumbleParty : MelonMod
     private ButtplugClient? client;
     private Canvas canvas = null!;
     private Character? partner1;
-    private const int QSamples = 1024;
+    private const int QSamples = 64;
     private const int rumbleUpdatems = 100;
     private GameObject CanvasGO;
     private int _baseRumble = 0;
@@ -126,6 +122,7 @@ public class RumbleParty : MelonMod
     private MelonPreferences_Entry<float> cowGirlValue = new();
     private MelonPreferences_Entry<float> cunnilingusValue = new();
     private MelonPreferences_Entry<float> dialogueRumbleScaler = new();
+    private MelonPreferences_Entry<float> dynamicCutsceneRumbleScaler = new();
     private MelonPreferences_Entry<float> dynamicDialogueRumbleScaler = new();
     private MelonPreferences_Entry<float> defaultRumbleTime = new();
     private MelonPreferences_Entry<float> doggieStyleValue = new();
@@ -158,6 +155,7 @@ public class RumbleParty : MelonMod
     private readonly float[] _spectrum = new float[QSamples];
     private readonly float[] valueAverage = new float[20];
     private readonly Timer rumbleUpdate;
+    private Salsa3D salsa;
     private SexualActs currentAct = SexualActs.None;
     private Task buttConnection = Task.FromResult(-1);
     private Text text = null!;
@@ -189,6 +187,7 @@ public class RumbleParty : MelonMod
         baseRumbleDecayScaler = preferences.CreateEntry("baseRumbleDecayScaler", 5, "How fast to decrease base rumble", "set to 0 to disable, is in factors of " + rumbleUpdatems.ToString() + "ms per value, so 5 -> " + (5 * rumbleUpdatems / 1000.0f).ToString() + "s for a decrease of 1%");
         defaultRumbleTime = preferences.CreateEntry("defaultRumbleTime", 1.0f, "starting rumble burst time", "in seconds, set the duration of each rumble burst.");
         dialogueRumbleScaler = preferences.CreateEntry("dialogueRumbleScaler", 5.0f, "base rumble modifier", "current dialogue partners love * this is the base rumble in 0-100");
+        dynamicCutsceneRumbleScaler = preferences.CreateEntry("dynamicCutsceneRumbleScaler", 500.0f, "Dynamic cutscene volume rumble scale", "Multiplied with the volume from the game during cutscenes");
         dynamicDialogueRumbleScaler = preferences.CreateEntry("dynamicDialogueRumbleScaler", 500.0f, "Dynamic dialogue volume rumble scale", "Multiplied with the volume of the character you're talking to");
         dynamicSexBaseRumbleScaler = preferences.CreateEntry("dynamicSexBaseRumbleScaler", 0.3f, "Base rumble scale during dynamic sex", "Multiplied with the orgasm value(0-100) for the base rumble");
         intifaceArguments = preferences.CreateEntry("intifaceArguments", "--use-bluetooth-le", "what protocols to use for device discovery", "Just combine these as you want: \r\n --use-bluetooth-le\tUse the Bluetooth LE Buttplug Device Communication Manager\r\n --use-serial\tUse the Serial Port Buttplug Device Communication Manager\r\n --use-hid\tUse the HID Buttplug Device Communication Manager\r\n --use-lovense-dongle\tUse the HID Lovense Dongle Buttplug Device Communication Manager\r\n --use-xinput\tUse the XInput Buttplug Device Communication Manager\r\n --use-lovense-connect\tUse the Lovense Connect Buttplug Device Communication Manager\r\n --use-device-websocket-server\tUse the Device Websocket Server Buttplug Device Communication Manager\r\n --device-websocket-server-port\tPort for the device websocket server");
@@ -224,6 +223,7 @@ public class RumbleParty : MelonMod
         wallSexValue = preferences.CreateEntry("wallSexValue", 15000.0f, "Multiplier for wallsex 1 intensity", "the larger the more intense. default 18000");
         wallSex2Value = preferences.CreateEntry("wallSex2Value", 20000.0f, "Multiplier for wallsex 2 intensity", "the larger the more intense. default 18000");
         wallSex3Value = preferences.CreateEntry("wallSex3Value", 12000.0f, "Multiplier for wallsex 3 intensity", "the larger the more intense. default 18000");
+
         MelonLogger.Msg($"[RumbleParty] Initializing RumbleParty with {intifacePath.Value} {intifaceArguments.Value}");
         buttConnection = Task.Run(InitializeButtConnections).ContinueWith((Task t) => { if (t.Exception != null) MelonLogger.Error(t.Exception.Message); });
         MelonLogger.Msg("[RumbleParty] Connection completed");
@@ -234,21 +234,23 @@ public class RumbleParty : MelonMod
         if (sceneName == "MainMenu")
         {
             // Canvas
-            //CanvasGO = new()
-            //{
-            //    name = "Rumbler UI",
-            //    active = true,
-            //};
-            //canvas = CanvasGO.AddComponent<Canvas>();
-            //canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            //var scaler = CanvasGO.AddComponent<CanvasScaler>();
-            //scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            //CanvasGO.AddComponent<GraphicRaycaster>();
+            CanvasGO = new()
+            {
+                name = "Rumbler UI",
+                active = true,
+                layer = LayerMask.NameToLayer("UI")
+            };
+            canvas = CanvasGO.AddComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            var scaler = CanvasGO.AddComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            CanvasGO.AddComponent<GraphicRaycaster>();
+            canvas.scaleFactor = 1.0f;
 
-            //_ = UIBuilder.CreatePanel("Rumbler UI Container", CanvasGO, new(0.2f, 0.3f), new(0, Screen.height * 0.7f), out var contentHolder);
-            //text = UIBuilder.CreateLabel(contentHolder, "Rumbler warning text", "", TextAnchor.MiddleCenter, Color.red);
-            //text.fontSize = 40;
-            //text.text = "TO STOP THE RUMBLE AT ANY TIME HIT ALT + X\n(also hides this text)";
+            _ = UIBuilder.CreatePanel("Rumbler UI Container", CanvasGO, new(0.3f, 0.1f), new(Screen.width * 0.5f, Screen.height * 0.5f), out var contentHolder);
+            text = UIBuilder.CreateLabel(contentHolder, "Rumbler warning text", "", TextAnchor.MiddleCenter, Color.red);
+            text.fontSize = 40;
+            text.text = "TO STOP THE RUMBLE AT ANY TIME HIT ALT + X\n(also hides this text)";
         }
         else
         {
@@ -301,16 +303,19 @@ public class RumbleParty : MelonMod
                 }
             }
 
-            if (useDynamicDialogue.Value)
+            if (useDynamicDialogue.Value && !dialgoueBoost)
             {
                 dialgoueBoost = true;
-                float value = GameObject.Find(DialogueUI.Singleton.nameText.m_Text)
-                                         .GetComponentInChildren<Salsa3D>().sample
-                                         .Sum()
-                                         * dynamicDialogueRumbleScaler.Value;
+                salsa = GameObject.Find(DialogueUI.Singleton.nameText.m_Text).GetComponentInChildren<Salsa3D>();
+            }
+
+            if (dialgoueBoost)
+            {
+                float value = salsa.sample.Sum() * dynamicDialogueRumbleScaler.Value;
                 value += value * 1.5f * Il2Cpp.AudioSettings.Singleton.CurrentAudioVolume / -40;
                 Rumble = (int)value;
             }
+
             if (intifaceDebug.Value) MelonLogger.Msg($"set base rumble to {BaseRumble + Rumble} due to love status");
         }
         else
@@ -397,21 +402,11 @@ public class RumbleParty : MelonMod
     {
         //todo fix
         if (CutsceneSource is null) return 0;
-        //CutsceneSource.GetSpectrumData(_spectrum, 0, FFTWindow.Blackman);
 
-        ////MelonLogger.Msg("spectrum: " + _spectrum.Sum() / QSamples);
-        //return (int)(_spectrum.Sum() / QSamples * 50);
+        AudioListener.GetSpectrumData(_spectrum, 0, FFTWindow.Blackman);
 
-        float value = 0;
-        if (lastPosition == Vector3.zero || lastPosition != player.PuppetHip.position)
-        {
-            value = (player.PuppetHip.position - lastPosition).magnitude;
-            lastPosition = player.PuppetHip.position;
-        }
-
-        value *= doggieStyleValue.Value;
-
-        return (int)value;
+        MelonLogger.Msg("spectrum: " + _spectrum.Sum() / QSamples);
+        return (int)(_spectrum.Sum() * dynamicCutsceneRumbleScaler.Value);
     }
 
     private async Task InitializeButtConnections()
@@ -534,7 +529,6 @@ public class RumbleParty : MelonMod
         UpdateRumble(null);
     }
 
-    //todo add settings for all values(13 + 1 for base rumble modifier)
     //todo check for female, but should be the same
     private int RumbleValueForAct(SexualActs act)
     {
