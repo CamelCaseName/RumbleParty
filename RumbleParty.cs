@@ -101,7 +101,7 @@ public class RumbleParty : MelonMod
     private Character? partner1;
     private const int QSamples = 64;
     private const int rumbleUpdatems = 100;
-    private GameObject CanvasGO;
+    private GameObject CanvasGO = null!;
     private int _baseRumble = 0;
     private int _currentMaxRumble = 50;
     private int _oldbaseRumble = 0;
@@ -152,10 +152,11 @@ public class RumbleParty : MelonMod
     private MelonPreferences_Entry<string> intifaceArguments = new();
     private MelonPreferences_Entry<string> intifacePath = new();
     private PlayerCharacter? player = null;
-    private readonly float[] _spectrum = new float[QSamples];
+    private Process intifaceApp = new();
+    private float[] _spectrum = new float[QSamples];
     private readonly float[] valueAverage = new float[20];
-    private readonly Timer rumbleUpdate;
-    private Salsa3D salsa;
+    private readonly Timer updater = null!;
+    private Salsa3D salsa = null!;
     private SexualActs currentAct = SexualActs.None;
     private Task buttConnection = Task.FromResult(-1);
     private Text text = null!;
@@ -163,7 +164,7 @@ public class RumbleParty : MelonMod
 
     public RumbleParty()
     {
-        rumbleUpdate = new Timer(UpdateRumble, null, 0, rumbleUpdatems);
+        updater = new Timer(UpdateRumble, null, 0, rumbleUpdatems);
     }
 
     private int BaseRumble { get => _baseRumble; set => _baseRumble = Math.Clamp(value, 0, CurrentMaxRumble); }
@@ -173,22 +174,22 @@ public class RumbleParty : MelonMod
 
     public override void OnDeinitializeMelon()
     {
+        updater.Dispose();
         client?.DisconnectAsync();
         client?.Dispose();
         buttConnection.Dispose();
+        intifaceApp.Close();
     }
 
     public override void OnInitializeMelon()
     {
         var preferences = MelonPreferences.CreateCategory("Rumblemod");
 
-        //todo add missing entries
-
         baseRumbleDecayScaler = preferences.CreateEntry("baseRumbleDecayScaler", 5, "How fast to decrease base rumble", "set to 0 to disable, is in factors of " + rumbleUpdatems.ToString() + "ms per value, so 5 -> " + (5 * rumbleUpdatems / 1000.0f).ToString() + "s for a decrease of 1%");
         defaultRumbleTime = preferences.CreateEntry("defaultRumbleTime", 1.0f, "starting rumble burst time", "in seconds, set the duration of each rumble burst.");
         dialogueRumbleScaler = preferences.CreateEntry("dialogueRumbleScaler", 5.0f, "base rumble modifier", "current dialogue partners love * this is the base rumble in 0-100");
-        dynamicCutsceneRumbleScaler = preferences.CreateEntry("dynamicCutsceneRumbleScaler", 500.0f, "Dynamic cutscene volume rumble scale", "Multiplied with the volume from the game during cutscenes");
-        dynamicDialogueRumbleScaler = preferences.CreateEntry("dynamicDialogueRumbleScaler", 500.0f, "Dynamic dialogue volume rumble scale", "Multiplied with the volume of the character you're talking to");
+        dynamicCutsceneRumbleScaler = preferences.CreateEntry("dynamicCutsceneRumbleScaler", 30.0f, "Dynamic cutscene volume rumble scale", "Multiplied with the volume from the game during cutscenes");
+        dynamicDialogueRumbleScaler = preferences.CreateEntry("dynamicDialogueRumbleScaler", 30.0f, "Dynamic dialogue volume rumble scale", "Multiplied with the volume of the character you're talking to");
         dynamicSexBaseRumbleScaler = preferences.CreateEntry("dynamicSexBaseRumbleScaler", 0.3f, "Base rumble scale during dynamic sex", "Multiplied with the orgasm value(0-100) for the base rumble");
         intifaceArguments = preferences.CreateEntry("intifaceArguments", "--use-bluetooth-le", "what protocols to use for device discovery", "Just combine these as you want: \r\n --use-bluetooth-le\tUse the Bluetooth LE Buttplug Device Communication Manager\r\n --use-serial\tUse the Serial Port Buttplug Device Communication Manager\r\n --use-hid\tUse the HID Buttplug Device Communication Manager\r\n --use-lovense-dongle\tUse the HID Lovense Dongle Buttplug Device Communication Manager\r\n --use-xinput\tUse the XInput Buttplug Device Communication Manager\r\n --use-lovense-connect\tUse the Lovense Connect Buttplug Device Communication Manager\r\n --use-device-websocket-server\tUse the Device Websocket Server Buttplug Device Communication Manager\r\n --device-websocket-server-port\tPort for the device websocket server");
         intifaceDebug = preferences.CreateEntry("intifaceDebug", false, "show internal intiface engine output", "when true shows the internal intiface-engine output in the melonloader console");
@@ -257,6 +258,8 @@ public class RumbleParty : MelonMod
             inGameMain = sceneName == "GameMain";
             if (inGameMain)
             {
+                GameManager.add_OnGamePause(new Action(() => UpdateRumble(new object())));
+                GameManager.add_OnGameUnPause(new Action(() => UpdateRumble(new object())));
                 rumbleUpdating = true;
                 player = UnityEngine.Object.FindObjectOfType<PlayerCharacter>();
             }
@@ -281,8 +284,6 @@ public class RumbleParty : MelonMod
         if (!inGameMain) return;
         player ??= UnityEngine.Object.FindObjectOfType<PlayerCharacter>();
         if (player is null) return;
-
-        rumbleUpdating = !GameManager.Singleton.IsPaused;
 
         //love value based base rumble
         if (DialogueUI.Singleton.IsShowing && !cutsceneBoost && !sexBoost)
@@ -314,17 +315,15 @@ public class RumbleParty : MelonMod
                 float value = salsa.sample.Sum() * dynamicDialogueRumbleScaler.Value;
                 value += value * 1.5f * Il2Cpp.AudioSettings.Singleton.CurrentAudioVolume / -40;
                 Rumble = (int)value;
+                //MelonLogger.Msg("dlg rumble: " + Rumble + " salsa: " + salsa.sample.Sum());
             }
 
             if (intifaceDebug.Value) MelonLogger.Msg($"set base rumble to {BaseRumble + Rumble} due to love status");
         }
-        else
+        else if (!DialogueUI.Singleton.IsShowing && useDynamicDialogue.Value && dialgoueBoost)
         {
-            if (useDynamicDialogue.Value && dialgoueBoost)
-            {
-                Rumble = 0;
-                dialgoueBoost = false;
-            }
+            Rumble = 0;
+            dialgoueBoost = false;
         }
 
         if (inventoryCount != CharacterManager.Singleton.PlayerInventory.Count)
@@ -400,12 +399,19 @@ public class RumbleParty : MelonMod
 
     private int AnalyzeAudioLoudness()
     {
-        //todo fix
         if (CutsceneSource is null) return 0;
+        Salsa3D cutsceneSalsa;
+        if (!(cutsceneSalsa = CutsceneSource.gameObject.GetComponent<Salsa3D>()))
+        {
+            cutsceneSalsa = CutsceneSource.gameObject.AddComponent<Salsa3D>();
+            cutsceneSalsa.audioSrc = CutsceneSource;
+            cutsceneSalsa.OnEnable();
+            MelonLogger.Msg("added salsa to the cutscene");
+        }
 
-        AudioListener.GetSpectrumData(_spectrum, 0, FFTWindow.Blackman);
+        _spectrum = cutsceneSalsa.sample;
 
-        MelonLogger.Msg("spectrum: " + _spectrum.Sum() / QSamples);
+        //MelonLogger.Msg("spectrum: " + _spectrum.Sum() + " rumble: " + (_spectrum.Sum() * dynamicCutsceneRumbleScaler.Value));
         return (int)(_spectrum.Sum() * dynamicCutsceneRumbleScaler.Value);
     }
 
@@ -425,13 +431,13 @@ public class RumbleParty : MelonMod
             }
 
             MelonLogger.Msg("Starting internal intiface-engine");
-            var app = Process.Start(new ProcessStartInfo(intifaceExeFilePath, "--websocket-port 12345 " + intifaceArguments.Value) { RedirectStandardOutput = true, RedirectStandardError = true })!;
+            intifaceApp = Process.Start(new ProcessStartInfo(intifaceExeFilePath, "--websocket-port 12345 " + intifaceArguments.Value) { RedirectStandardOutput = true, RedirectStandardError = true })!;
             bool started = false;
 
             if (intifaceDebug.Value)
             {
                 MelonLogger.Msg("intiface debug enabled");
-                app.OutputDataReceived += (object _, DataReceivedEventArgs args) =>
+                intifaceApp.OutputDataReceived += (object _, DataReceivedEventArgs args) =>
                 {
                     MelonLogger.Msg(args.Data);
                     if (args.Data?.Contains("intiface_engine::engine\u001b[0m\u001b[2m:\u001b[0m Starting server", StringComparison.InvariantCultureIgnoreCase) ?? false) started = true;
@@ -440,14 +446,14 @@ public class RumbleParty : MelonMod
             else
             {
                 MelonLogger.Msg("intiface debug disabled");
-                app.OutputDataReceived += (object _, DataReceivedEventArgs args) =>
+                intifaceApp.OutputDataReceived += (object _, DataReceivedEventArgs args) =>
                 {
                     if (args.Data?.Contains("intiface_engine::engine\u001b[0m\u001b[2m:\u001b[0m Starting server", StringComparison.InvariantCultureIgnoreCase) ?? false) started = true;
                 };
             }
-            app.ErrorDataReceived += (object _, DataReceivedEventArgs args) => MelonLogger.Error(args.Data);
-            app.BeginOutputReadLine();
-            app.BeginErrorReadLine();
+            intifaceApp.ErrorDataReceived += (object _, DataReceivedEventArgs args) => MelonLogger.Error(args.Data);
+            intifaceApp.BeginOutputReadLine();
+            intifaceApp.BeginErrorReadLine();
 
             MelonLogger.Msg("waiting on iniface-server to start");
             while (!started) { } //wait on server to start
@@ -456,7 +462,7 @@ public class RumbleParty : MelonMod
         }
         else
         {
-            MelonLogger.Msg($"Connecting to intiface-engine/app at {intifacePath.Value}");
+            MelonLogger.Msg($"Connecting to intiface-engine/intifaceApp at {intifacePath.Value}");
             //use configured intiface engine
             connector = new ButtplugWebsocketConnector(new Uri(intifacePath.Value));
         }
@@ -793,6 +799,7 @@ public class RumbleParty : MelonMod
         BaseRumble = (int)(player.Intimacy.Orgasm / dynamicSexBaseRumbleScaler.Value);
         return (int)valueAverage.Sum() / 20;
     }
+
     private void ToggleRumble()
     {
         if (!messageAcknowledged)
@@ -824,7 +831,10 @@ public class RumbleParty : MelonMod
         if (client?.Devices.Length == 0 || !rumbleUpdating) return;
         int rumble = Math.Clamp(Rumble + BaseRumble, 0, 100);
 
-        UpdateDeviceActuators(rumble);
+        if (GameManager.Singleton.IsPaused)
+            UpdateDeviceActuators(0);
+        else
+            UpdateDeviceActuators(rumble);
 
         secondCounter++;
         if (secondCounter >= baseRumbleDecayScaler.Value && baseRumbleDecayScaler.Value != 0)
