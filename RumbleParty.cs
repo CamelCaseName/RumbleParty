@@ -212,18 +212,18 @@ public class RumbleParty : MelonMod
         useDynamicSexBoost = preferences.CreateEntry("useDynamicSexBoost", true, "Rumble based on movement", "true: rumble is based on movement during sex. false: rumble is static during sex");
         vibrationDivisor = preferences.CreateEntry("vibrationDivisor", 100.0f, "vibration actuator divisor", "should scale 0-100 to a value 0-1.0, can be made larger than 100 to actuate less");
         blowJobValue = preferences.CreateEntry("blowJobValue", 18000.0f, "Multiplier for blow job intensity", "the larger the more intense. default 18000");
-        cowGirlValue = preferences.CreateEntry("cowGirlValue", 8000.0f, "Multiplier for cowgirl intensity", "the larger the more intense. default 18000");
-        cunnilingusValue = preferences.CreateEntry("cunnilingusValue", 1.0f, "Multiplier for cunnilingus intensity", "the larger the more intense. default 18000");
-        doggieStyleValue = preferences.CreateEntry("doggieStyleValue", 10000.0f, "Multiplier for fingering intensity", "the larger the more intense. default 18000");
-        fingeringValue = preferences.CreateEntry("fingeringValue", 5000.0f, "Multiplier for doggiestyle intensity", "the larger the more intense. default 18000");
+        cowGirlValue = preferences.CreateEntry("cowGirlValue", 8000.0f, "Multiplier for cowgirl intensity", "the larger the more intense. default 8000");
+        cunnilingusValue = preferences.CreateEntry("cunnilingusValue", 1.0f, "Multiplier for cunnilingus intensity", "the larger the more intense. default 1");
+        doggieStyleValue = preferences.CreateEntry("doggieStyleValue", 10000.0f, "Multiplier for fingering intensity", "the larger the more intense. default 10000");
+        fingeringValue = preferences.CreateEntry("fingeringValue", 5000.0f, "Multiplier for doggiestyle intensity", "the larger the more intense. default 5000");
         hotTubHandjobValue = preferences.CreateEntry("hotTubHandjobValue", 18000.0f, "Multiplier for hot tub handjob intensity", "the larger the more intense. default 18000");
         masturbatingValue = preferences.CreateEntry("masturbatingValue", 18000.0f, "Multiplier for masturbating intensity", "the larger the more intense. default 18000");
-        missionaryValue = preferences.CreateEntry("missionaryValue", 20000.0f, "Multiplier for missionary intensity", "the larger the more intense. default 18000");
-        scissoringValue = preferences.CreateEntry("scissoringValue", 20000.0f, "Multiplier for scissoring intensity", "the larger the more intense. default 18000");
+        missionaryValue = preferences.CreateEntry("missionaryValue", 20000.0f, "Multiplier for missionary intensity", "the larger the more intense. default 20000");
+        scissoringValue = preferences.CreateEntry("scissoringValue", 20000.0f, "Multiplier for scissoring intensity", "the larger the more intense. default 20000");
         sixtyNineValue = preferences.CreateEntry("sixtyNineValue", 18000.0f, "Multiplier for sixty nine intensity", "the larger the more intense. default 18000");
-        wallSexValue = preferences.CreateEntry("wallSexValue", 15000.0f, "Multiplier for wallsex 1 intensity", "the larger the more intense. default 18000");
-        wallSex2Value = preferences.CreateEntry("wallSex2Value", 20000.0f, "Multiplier for wallsex 2 intensity", "the larger the more intense. default 18000");
-        wallSex3Value = preferences.CreateEntry("wallSex3Value", 12000.0f, "Multiplier for wallsex 3 intensity", "the larger the more intense. default 18000");
+        wallSexValue = preferences.CreateEntry("wallSexValue", 15000.0f, "Multiplier for wallsex 1 intensity", "the larger the more intense. default 15000");
+        wallSex2Value = preferences.CreateEntry("wallSex2Value", 20000.0f, "Multiplier for wallsex 2 intensity", "the larger the more intense. default 20000");
+        wallSex3Value = preferences.CreateEntry("wallSex3Value", 12000.0f, "Multiplier for wallsex 3 intensity", "the larger the more intense. default 12000");
 
         MelonLogger.Msg($"[RumbleParty] Initializing RumbleParty with {intifacePath.Value} {intifaceArguments.Value}");
         buttConnection = Task.Run(InitializeButtConnections).ContinueWith((Task t) => { if (t.Exception != null) MelonLogger.Error(t.Exception.Message); });
