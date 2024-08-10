@@ -113,6 +113,16 @@ namespace RumbleParty.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Byte[].
         /// </summary>
+        internal static byte[] System_Security_Permissions {
+            get {
+                object obj = ResourceManager.GetObject("System_Security_Permissions", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
         internal static byte[] System_Threading_Channels {
             get {
                 object obj = ResourceManager.GetObject("System_Threading_Channels", resourceCulture);
