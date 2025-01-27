@@ -15,9 +15,11 @@ Make sure you have installed the game and at least started the game once before 
 4. Select and HouseParty.exe from where the game is installed.
 5. Select the latest Version of MelonLoader.
 6. Click the INSTALL or RE-INSTALL button.
-9. Place the Freecam.dll into the Mods folder.
+9. Place the RumbleParty.dll into the Mods folder.
 
 After this the installation directory of the game should contain a new folder called `Mods`.
 Then Move the downloaded `.dll` into this folder and start the game.
 
 Connect your devices and off you go.
+
+You can also specify your own intiface engine with the connection string here `House Party/UserData/MelonPreferences.cfg`.
